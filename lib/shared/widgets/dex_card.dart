@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_radius.dart';
+import '../../app/theme/app_spacing.dart';
+
 class DexCard extends StatelessWidget {
   const DexCard({
     required this.child,
     super.key,
     this.onTap,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(AppSpacing.medium),
   });
 
   final Widget child;
@@ -14,29 +17,37 @@ class DexCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+    final theme = Theme.of(context);
+
+    final decoration = BoxDecoration(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(AppRadius.large),
+      border: Border.all(
+        color: theme.colorScheme.outline,
       ),
-      child: child,
     );
 
     if (onTap == null) {
-      return content;
+      return Container(
+        width: double.infinity,
+        padding: padding,
+        decoration: decoration,
+        child: child,
+      );
     }
 
     return Material(
       color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadius.large),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: content,
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        child: Ink(
+          width: double.infinity,
+          padding: padding,
+          decoration: decoration,
+          child: child,
+        ),
       ),
     );
   }
