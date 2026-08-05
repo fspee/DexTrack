@@ -1244,6 +1244,224 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
   }
 }
 
+class $WishlistItemsTable extends WishlistItems
+    with TableInfo<$WishlistItemsTable, WishlistItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WishlistItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _cardIdMeta = const VerificationMeta('cardId');
+  @override
+  late final GeneratedColumn<String> cardId = GeneratedColumn<String>(
+    'card_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES stored_cards (card_id)',
+    ),
+  );
+  static const VerificationMeta _addedAtMeta = const VerificationMeta(
+    'addedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
+    'added_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [cardId, addedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'wishlist_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WishlistItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('card_id')) {
+      context.handle(
+        _cardIdMeta,
+        cardId.isAcceptableOrUnknown(data['card_id']!, _cardIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cardIdMeta);
+    }
+    if (data.containsKey('added_at')) {
+      context.handle(
+        _addedAtMeta,
+        addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_addedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {cardId};
+  @override
+  WishlistItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WishlistItem(
+      cardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}card_id'],
+      )!,
+      addedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}added_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WishlistItemsTable createAlias(String alias) {
+    return $WishlistItemsTable(attachedDatabase, alias);
+  }
+}
+
+class WishlistItem extends DataClass implements Insertable<WishlistItem> {
+  final String cardId;
+  final DateTime addedAt;
+  const WishlistItem({required this.cardId, required this.addedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['card_id'] = Variable<String>(cardId);
+    map['added_at'] = Variable<DateTime>(addedAt);
+    return map;
+  }
+
+  WishlistItemsCompanion toCompanion(bool nullToAbsent) {
+    return WishlistItemsCompanion(
+      cardId: Value(cardId),
+      addedAt: Value(addedAt),
+    );
+  }
+
+  factory WishlistItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WishlistItem(
+      cardId: serializer.fromJson<String>(json['cardId']),
+      addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'cardId': serializer.toJson<String>(cardId),
+      'addedAt': serializer.toJson<DateTime>(addedAt),
+    };
+  }
+
+  WishlistItem copyWith({String? cardId, DateTime? addedAt}) => WishlistItem(
+    cardId: cardId ?? this.cardId,
+    addedAt: addedAt ?? this.addedAt,
+  );
+  WishlistItem copyWithCompanion(WishlistItemsCompanion data) {
+    return WishlistItem(
+      cardId: data.cardId.present ? data.cardId.value : this.cardId,
+      addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WishlistItem(')
+          ..write('cardId: $cardId, ')
+          ..write('addedAt: $addedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(cardId, addedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WishlistItem &&
+          other.cardId == this.cardId &&
+          other.addedAt == this.addedAt);
+}
+
+class WishlistItemsCompanion extends UpdateCompanion<WishlistItem> {
+  final Value<String> cardId;
+  final Value<DateTime> addedAt;
+  final Value<int> rowid;
+  const WishlistItemsCompanion({
+    this.cardId = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WishlistItemsCompanion.insert({
+    required String cardId,
+    required DateTime addedAt,
+    this.rowid = const Value.absent(),
+  }) : cardId = Value(cardId),
+       addedAt = Value(addedAt);
+  static Insertable<WishlistItem> custom({
+    Expression<String>? cardId,
+    Expression<DateTime>? addedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (cardId != null) 'card_id': cardId,
+      if (addedAt != null) 'added_at': addedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WishlistItemsCompanion copyWith({
+    Value<String>? cardId,
+    Value<DateTime>? addedAt,
+    Value<int>? rowid,
+  }) {
+    return WishlistItemsCompanion(
+      cardId: cardId ?? this.cardId,
+      addedAt: addedAt ?? this.addedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (cardId.present) {
+      map['card_id'] = Variable<String>(cardId.value);
+    }
+    if (addedAt.present) {
+      map['added_at'] = Variable<DateTime>(addedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WishlistItemsCompanion(')
+          ..write('cardId: $cardId, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AppSettingsTable extends AppSettings
     with TableInfo<$AppSettingsTable, AppSetting> {
   @override
@@ -1475,6 +1693,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CollectionItemsTable collectionItems = $CollectionItemsTable(
     this,
   );
+  late final $WishlistItemsTable wishlistItems = $WishlistItemsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -1483,6 +1702,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     storedCards,
     collectionItems,
+    wishlistItems,
     appSettings,
   ];
 }
@@ -1543,6 +1763,24 @@ final class $$StoredCardsTableReferences
     final cache = $_typedResult.readTableOrNull(
       _collectionItemsRefsTable($_db),
     );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$WishlistItemsTable, List<WishlistItem>>
+  _wishlistItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.wishlistItems,
+    aliasName: 'stored_cards__card_id__wishlist_items__card_id',
+  );
+
+  $$WishlistItemsTableProcessedTableManager get wishlistItemsRefs {
+    final manager = $$WishlistItemsTableTableManager($_db, $_db.wishlistItems)
+        .filter(
+          (f) => f.cardId.cardId.sqlEquals($_itemColumn<String>('card_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_wishlistItemsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -1644,6 +1882,31 @@ class $$StoredCardsTableFilterComposer
           }) => $$CollectionItemsTableFilterComposer(
             $db: $db,
             $table: $db.collectionItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> wishlistItemsRefs(
+    Expression<bool> Function($$WishlistItemsTableFilterComposer f) f,
+  ) {
+    final $$WishlistItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.cardId,
+      referencedTable: $db.wishlistItems,
+      getReferencedColumn: (t) => t.cardId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WishlistItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.wishlistItems,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -1813,6 +2076,31 @@ class $$StoredCardsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> wishlistItemsRefs<T extends Object>(
+    Expression<T> Function($$WishlistItemsTableAnnotationComposer a) f,
+  ) {
+    final $$WishlistItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.cardId,
+      referencedTable: $db.wishlistItems,
+      getReferencedColumn: (t) => t.cardId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WishlistItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.wishlistItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$StoredCardsTableTableManager
@@ -1828,7 +2116,10 @@ class $$StoredCardsTableTableManager
           $$StoredCardsTableUpdateCompanionBuilder,
           (StoredCard, $$StoredCardsTableReferences),
           StoredCard,
-          PrefetchHooks Function({bool collectionItemsRefs})
+          PrefetchHooks Function({
+            bool collectionItemsRefs,
+            bool wishlistItemsRefs,
+          })
         > {
   $$StoredCardsTableTableManager(_$AppDatabase db, $StoredCardsTable table)
     : super(
@@ -1917,38 +2208,63 @@ class $$StoredCardsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({collectionItemsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (collectionItemsRefs) db.collectionItems,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (collectionItemsRefs)
-                    await $_getPrefetchedData<
-                      StoredCard,
-                      $StoredCardsTable,
-                      CollectionItem
-                    >(
-                      currentTable: table,
-                      referencedTable: $$StoredCardsTableReferences
-                          ._collectionItemsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$StoredCardsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).collectionItemsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.cardId == item.cardId),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({collectionItemsRefs = false, wishlistItemsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (collectionItemsRefs) db.collectionItems,
+                    if (wishlistItemsRefs) db.wishlistItems,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (collectionItemsRefs)
+                        await $_getPrefetchedData<
+                          StoredCard,
+                          $StoredCardsTable,
+                          CollectionItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StoredCardsTableReferences
+                              ._collectionItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StoredCardsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).collectionItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.cardId == item.cardId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (wishlistItemsRefs)
+                        await $_getPrefetchedData<
+                          StoredCard,
+                          $StoredCardsTable,
+                          WishlistItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StoredCardsTableReferences
+                              ._wishlistItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StoredCardsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).wishlistItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.cardId == item.cardId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -1965,7 +2281,7 @@ typedef $$StoredCardsTableProcessedTableManager =
       $$StoredCardsTableUpdateCompanionBuilder,
       (StoredCard, $$StoredCardsTableReferences),
       StoredCard,
-      PrefetchHooks Function({bool collectionItemsRefs})
+      PrefetchHooks Function({bool collectionItemsRefs, bool wishlistItemsRefs})
     >;
 typedef $$CollectionItemsTableCreateCompanionBuilder =
     CollectionItemsCompanion Function({
@@ -2327,6 +2643,270 @@ typedef $$CollectionItemsTableProcessedTableManager =
       CollectionItem,
       PrefetchHooks Function({bool cardId})
     >;
+typedef $$WishlistItemsTableCreateCompanionBuilder =
+    WishlistItemsCompanion Function({
+      required String cardId,
+      required DateTime addedAt,
+      Value<int> rowid,
+    });
+typedef $$WishlistItemsTableUpdateCompanionBuilder =
+    WishlistItemsCompanion Function({
+      Value<String> cardId,
+      Value<DateTime> addedAt,
+      Value<int> rowid,
+    });
+
+final class $$WishlistItemsTableReferences
+    extends BaseReferences<_$AppDatabase, $WishlistItemsTable, WishlistItem> {
+  $$WishlistItemsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $StoredCardsTable _cardIdTable(_$AppDatabase db) => db.storedCards
+      .createAlias('wishlist_items__card_id__stored_cards__card_id');
+
+  $$StoredCardsTableProcessedTableManager get cardId {
+    final $_column = $_itemColumn<String>('card_id')!;
+
+    final manager = $$StoredCardsTableTableManager(
+      $_db,
+      $_db.storedCards,
+    ).filter((f) => f.cardId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_cardIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$WishlistItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $WishlistItemsTable> {
+  $$WishlistItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$StoredCardsTableFilterComposer get cardId {
+    final $$StoredCardsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.cardId,
+      referencedTable: $db.storedCards,
+      getReferencedColumn: (t) => t.cardId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StoredCardsTableFilterComposer(
+            $db: $db,
+            $table: $db.storedCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WishlistItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WishlistItemsTable> {
+  $$WishlistItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$StoredCardsTableOrderingComposer get cardId {
+    final $$StoredCardsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.cardId,
+      referencedTable: $db.storedCards,
+      getReferencedColumn: (t) => t.cardId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StoredCardsTableOrderingComposer(
+            $db: $db,
+            $table: $db.storedCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WishlistItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WishlistItemsTable> {
+  $$WishlistItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get addedAt =>
+      $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  $$StoredCardsTableAnnotationComposer get cardId {
+    final $$StoredCardsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.cardId,
+      referencedTable: $db.storedCards,
+      getReferencedColumn: (t) => t.cardId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StoredCardsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.storedCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WishlistItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WishlistItemsTable,
+          WishlistItem,
+          $$WishlistItemsTableFilterComposer,
+          $$WishlistItemsTableOrderingComposer,
+          $$WishlistItemsTableAnnotationComposer,
+          $$WishlistItemsTableCreateCompanionBuilder,
+          $$WishlistItemsTableUpdateCompanionBuilder,
+          (WishlistItem, $$WishlistItemsTableReferences),
+          WishlistItem,
+          PrefetchHooks Function({bool cardId})
+        > {
+  $$WishlistItemsTableTableManager(_$AppDatabase db, $WishlistItemsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WishlistItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WishlistItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WishlistItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> cardId = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WishlistItemsCompanion(
+                cardId: cardId,
+                addedAt: addedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String cardId,
+                required DateTime addedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => WishlistItemsCompanion.insert(
+                cardId: cardId,
+                addedAt: addedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$WishlistItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({cardId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (cardId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.cardId,
+                                referencedTable: $$WishlistItemsTableReferences
+                                    ._cardIdTable(db),
+                                referencedColumn: $$WishlistItemsTableReferences
+                                    ._cardIdTable(db)
+                                    .cardId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$WishlistItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WishlistItemsTable,
+      WishlistItem,
+      $$WishlistItemsTableFilterComposer,
+      $$WishlistItemsTableOrderingComposer,
+      $$WishlistItemsTableAnnotationComposer,
+      $$WishlistItemsTableCreateCompanionBuilder,
+      $$WishlistItemsTableUpdateCompanionBuilder,
+      (WishlistItem, $$WishlistItemsTableReferences),
+      WishlistItem,
+      PrefetchHooks Function({bool cardId})
+    >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       required String settingKey,
@@ -2482,6 +3062,8 @@ class $AppDatabaseManager {
       $$StoredCardsTableTableManager(_db, _db.storedCards);
   $$CollectionItemsTableTableManager get collectionItems =>
       $$CollectionItemsTableTableManager(_db, _db.collectionItems);
+  $$WishlistItemsTableTableManager get wishlistItems =>
+      $$WishlistItemsTableTableManager(_db, _db.wishlistItems);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
 }

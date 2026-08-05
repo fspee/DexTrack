@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../core/widgets/placeholder_page.dart';
-import '../features/cards/card_search_page.dart';
 import '../features/collection/collection_page.dart';
 import '../features/home/home_page.dart';
 import '../features/sets/sets_page.dart';
+import '../features/scanner/scanner_page.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -27,7 +27,7 @@ class _AppShellState extends State<AppShell> {
       onNavigate: _setPage,
     ),
     const CollectionPage(),
-    const CardSearchPage(),
+    const ScannerPage(),
     const SetsPage(),
     const PlaceholderPage(
       title: 'Decks',

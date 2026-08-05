@@ -10,9 +10,13 @@ part 'app_database.g.dart';
 
 class StoredCards extends Table {
   TextColumn get cardId => text()();
+
   TextColumn get name => text()();
+
   TextColumn get setId => text()();
+
   TextColumn get setName => text()();
+
   TextColumn get number => text()();
 
   TextColumn get rarity =>
@@ -60,8 +64,9 @@ class CollectionItems extends Table {
       text().withDefault(const Constant('unbekannt'))();
 
   DateTimeColumn get addedAt => dateTime()();
+
   BoolColumn get isFavorite =>
-    boolean().withDefault(const Constant(false))();
+      boolean().withDefault(const Constant(false))();
 
   @override
   List<Set<Column<Object>>> get uniqueKeys => [
@@ -69,8 +74,20 @@ class CollectionItems extends Table {
       ];
 }
 
+class WishlistItems extends Table {
+  TextColumn get cardId =>
+      text().references(StoredCards, #cardId)();
+
+  DateTimeColumn get addedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {cardId};
+}
+
+
 class AppSettings extends Table {
   TextColumn get settingKey => text()();
+
   TextColumn get settingValue => text()();
 
   @override
@@ -81,6 +98,7 @@ class AppSettings extends Table {
   tables: [
     StoredCards,
     CollectionItems,
+    WishlistItems,
     AppSettings,
   ],
 )
@@ -88,24 +106,38 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'dextrack'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
-MigrationStrategy get migration {
-  return MigrationStrategy(
-    onCreate: (migrator) async {
-      await migrator.createAll();
-    },
-    onUpgrade: (migrator, from, to) async {
-     if (from < 2) {
-  await customStatement(
-    'ALTER TABLE collection_items '
-    'ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
-  );
-} 
-    },
-  );
-}
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (migrator) async {
+        await migrator.createAll();
+      },
+      onUpgrade: (migrator, from, to) async {
+        if (from < 2) {
+          await customStatement(
+            'ALTER TABLE collection_items '
+            'ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+          );
+        }
+
+        if (from < 3) {
+          await customStatement(
+            'CREATE TABLE IF NOT EXISTS wishlist_items ('
+            'card_id TEXT NOT NULL PRIMARY KEY '
+            'REFERENCES stored_cards(card_id), '
+            'added_at INTEGER NOT NULL'
+            ')',
+          );
+        }
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Onboarding
+  // ---------------------------------------------------------------------------
 
   Future<bool> isOnboardingComplete() async {
     final row = await (select(appSettings)
@@ -127,6 +159,10 @@ MigrationStrategy get migration {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Sammlung
+  // ---------------------------------------------------------------------------
+
   Future<List<CollectionEntry>> loadCollectionEntries() async {
     final query = select(collectionItems).join([
       innerJoin(
@@ -141,54 +177,21 @@ MigrationStrategy get migration {
       final storedCard = row.readTable(storedCards);
       final collectionItem = row.readTable(collectionItems);
 
-      final card = PokemonCard(
-        id: storedCard.cardId,
-        name: storedCard.name,
-        setId: storedCard.setId,
-        setName: storedCard.setName,
-        number: storedCard.number,
-        rarity: storedCard.rarity,
-        imageUrl: storedCard.imageUrl,
-        cardmarketUrl: storedCard.cardmarketUrl,
-        language: storedCard.language,
-        supertype: storedCard.supertype,
-        subtypes: _decodeStringList(storedCard.subtypesJson),
-        hp: storedCard.hp,
-        types: _decodeStringList(storedCard.typesJson),
-      );
-
       return CollectionEntry(
-  card: card,
-  quantity: collectionItem.quantity,
-  isFavorite: collectionItem.isFavorite,
-);
+        card: _storedCardToPokemonCard(storedCard),
+        quantity: collectionItem.quantity,
+        isFavorite: collectionItem.isFavorite,
+      );
     }).toList();
   }
 
   Future<void> saveCollectionEntry({
-  required PokemonCard card,
-  required int quantity,
-  required bool isFavorite,
-}) async {
+    required PokemonCard card,
+    required int quantity,
+    required bool isFavorite,
+  }) async {
     await transaction(() async {
-      await into(storedCards).insertOnConflictUpdate(
-        StoredCardsCompanion.insert(
-          cardId: card.id,
-          name: card.name,
-          setId: card.setId,
-          setName: card.setName,
-          number: card.number,
-          rarity: Value(card.rarity),
-          imageUrl: Value(card.imageUrl),
-          cardmarketUrl: Value(card.cardmarketUrl),
-          language: Value(card.language),
-          supertype: Value(card.supertype),
-          subtypesJson: Value(jsonEncode(card.subtypes)),
-          hp: Value(card.hp),
-          typesJson: Value(jsonEncode(card.types)),
-          updatedAt: DateTime.now(),
-        ),
-      );
+      await _saveStoredCard(card);
 
       final existingItem = await (select(collectionItems)
             ..where(
@@ -217,51 +220,157 @@ MigrationStrategy get migration {
               ))
             .write(
           CollectionItemsCompanion(
-  quantity: Value(quantity),
-  isFavorite: Value(isFavorite),
-),
+            quantity: Value(quantity),
+            isFavorite: Value(isFavorite),
+          ),
         );
       }
     });
   }
 
-Future<void> saveCardsToCache(List<PokemonCard> cards) async {
-  if (cards.isEmpty) {
-    return;
+  Future<void> deleteCollectionEntry(String cardId) async {
+    await (delete(collectionItems)
+          ..where(
+            (table) => table.cardId.equals(cardId),
+          ))
+        .go();
   }
 
-  await batch((batch) {
-    for (final card in cards) {
-      batch.insert(
-        storedCards,
-        StoredCardsCompanion.insert(
-          cardId: card.id,
-          name: card.name,
-          setId: card.setId,
-          setName: card.setName,
-          number: card.number,
-          rarity: Value(card.rarity),
-          imageUrl: Value(card.imageUrl),
-          cardmarketUrl: Value(card.cardmarketUrl),
-          language: Value(card.language),
-          supertype: Value(card.supertype),
-          subtypesJson: Value(jsonEncode(card.subtypes)),
-          hp: Value(card.hp),
-          typesJson: Value(jsonEncode(card.types)),
-          updatedAt: DateTime.now(),
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+  Future<void> clearStoredCollection() async {
+    await delete(collectionItems).go();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Set-Karten-Cache
+  // ---------------------------------------------------------------------------
+
+  Future<void> saveCardsToCache(List<PokemonCard> cards) async {
+    if (cards.isEmpty) {
+      return;
     }
-  });
-}
 
-Future<List<PokemonCard>> loadCachedCardsForSet(String setId) async {
-  final rows = await (select(storedCards)
-        ..where((table) => table.setId.equals(setId)))
-      .get();
+    await transaction(() async {
+      for (final card in cards) {
+        await _saveStoredCard(card);
+      }
+    });
+  }
 
-  return rows.map((storedCard) {
+  Future<List<PokemonCard>> loadCachedCardsForSet(
+    String setId,
+  ) async {
+    final rows = await (select(storedCards)
+          ..where(
+            (table) => table.setId.equals(setId),
+          ))
+        .get();
+
+    return rows
+        .map(_storedCardToPokemonCard)
+        .toList();
+  }
+
+  Future<bool> isSetCacheComplete(String setId) async {
+    final row = await (select(appSettings)
+          ..where(
+            (table) =>
+                table.settingKey.equals('set_cache_$setId'),
+          ))
+        .getSingleOrNull();
+
+    return row?.settingValue == 'complete';
+  }
+
+  Future<void> markSetCacheComplete(String setId) async {
+    await into(appSettings).insertOnConflictUpdate(
+      AppSettingsCompanion.insert(
+        settingKey: 'set_cache_$setId',
+        settingValue: 'complete',
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wunschliste
+  // ---------------------------------------------------------------------------
+
+  Future<List<PokemonCard>> loadWishlistCards() async {
+    final query = select(wishlistItems).join([
+      innerJoin(
+        storedCards,
+        storedCards.cardId.equalsExp(wishlistItems.cardId),
+      ),
+    ]);
+
+    final rows = await query.get();
+
+    return rows.map((row) {
+      final storedCard = row.readTable(storedCards);
+      return _storedCardToPokemonCard(storedCard);
+    }).toList();
+  }
+
+  Future<bool> isCardOnWishlist(String cardId) async {
+    final row = await (select(wishlistItems)
+          ..where(
+            (table) => table.cardId.equals(cardId),
+          ))
+        .getSingleOrNull();
+
+    return row != null;
+  }
+
+  Future<void> addCardToWishlist(PokemonCard card) async {
+    await transaction(() async {
+      await _saveStoredCard(card);
+
+      await into(wishlistItems).insertOnConflictUpdate(
+        WishlistItemsCompanion.insert(
+          cardId: card.id,
+          addedAt: DateTime.now(),
+        ),
+      );
+    });
+  }
+
+  Future<void> removeCardFromWishlist(String cardId) async {
+    await (delete(wishlistItems)
+          ..where(
+            (table) => table.cardId.equals(cardId),
+          ))
+        .go();
+  }
+
+  Future<void> clearWishlist() async {
+    await delete(wishlistItems).go();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gemeinsame Hilfsmethoden
+  // ---------------------------------------------------------------------------
+
+  Future<void> _saveStoredCard(PokemonCard card) async {
+    await into(storedCards).insertOnConflictUpdate(
+      StoredCardsCompanion.insert(
+        cardId: card.id,
+        name: card.name,
+        setId: card.setId,
+        setName: card.setName,
+        number: card.number,
+        rarity: Value(card.rarity),
+        imageUrl: Value(card.imageUrl),
+        cardmarketUrl: Value(card.cardmarketUrl),
+        language: Value(card.language),
+        supertype: Value(card.supertype),
+        subtypesJson: Value(jsonEncode(card.subtypes)),
+        hp: Value(card.hp),
+        typesJson: Value(jsonEncode(card.types)),
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  PokemonCard _storedCardToPokemonCard(StoredCard storedCard) {
     return PokemonCard(
       id: storedCard.cardId,
       name: storedCard.name,
@@ -277,37 +386,6 @@ Future<List<PokemonCard>> loadCachedCardsForSet(String setId) async {
       hp: storedCard.hp,
       types: _decodeStringList(storedCard.typesJson),
     );
-  }).toList();
-}
-Future<bool> isSetCacheComplete(String setId) async {
-  final row = await (select(appSettings)
-        ..where(
-          (table) => table.settingKey.equals('set_cache_$setId'),
-        ))
-      .getSingleOrNull();
-
-  return row?.settingValue == 'complete';
-}
-
-Future<void> markSetCacheComplete(String setId) async {
-  await into(appSettings).insertOnConflictUpdate(
-    AppSettingsCompanion.insert(
-      settingKey: 'set_cache_$setId',
-      settingValue: 'complete',
-    ),
-  );
-}
-
-  Future<void> deleteCollectionEntry(String cardId) async {
-    await (delete(collectionItems)
-          ..where(
-            (table) => table.cardId.equals(cardId),
-          ))
-        .go();
-  }
-
-  Future<void> clearStoredCollection() async {
-    await delete(collectionItems).go();
   }
 
   static List<String> _decodeStringList(String jsonText) {

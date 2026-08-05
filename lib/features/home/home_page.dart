@@ -5,10 +5,13 @@ import '../../app/theme/app_spacing.dart';
 import '../../shared/widgets/dex_action_card.dart';
 import '../../shared/widgets/dex_card.dart';
 import '../../shared/widgets/dex_empty_state.dart';
+import '../../shared/widgets/dex_network_image.dart';
 import '../../shared/widgets/dex_section_title.dart';
 import '../../shared/widgets/dex_stat_card.dart';
 import '../cards/card_detail_page.dart';
 import '../collection/collection_provider.dart';
+import '../scanner/scanner_page.dart';
+import '../cards/card_search_page.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({
@@ -31,10 +34,12 @@ class HomePage extends ConsumerWidget {
         .length;
 
     final recentEntries = collection.reversed.take(5).toList();
+
     final favoriteEntries = collection
-    .where((entry) => entry.isFavorite)
-    .take(5)
-    .toList();
+        .where((entry) => entry.isFavorite)
+        .take(5)
+        .toList();
+
     final nextMilestone = _nextMilestone(uniqueCards);
     final cardsUntilMilestone = nextMilestone - uniqueCards;
     final milestoneProgress = uniqueCards / nextMilestone;
@@ -66,7 +71,13 @@ class HomePage extends ConsumerWidget {
 
             TextField(
               readOnly: true,
-              onTap: () => onNavigate(2),
+              onTap: () {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => const CardSearchPage(),
+    ),
+  );
+},
               decoration: const InputDecoration(
                 hintText: 'Pokémon-Karte suchen',
                 prefixIcon: Icon(Icons.search),
@@ -80,7 +91,13 @@ class HomePage extends ConsumerWidget {
               title: 'Karte scannen',
               description: 'Karte erkennen und zur Sammlung hinzufügen',
               icon: Icons.document_scanner_outlined,
-              onTap: () => onNavigate(2),
+              onTap: () {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => const ScannerPage(),
+    ),
+  );
+},
             ),
 
             const SizedBox(height: AppSpacing.xLarge),
@@ -241,7 +258,7 @@ class HomePage extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final entry = recentEntries[index];
 
-                    return _RecentCardTile(
+                    return _DashboardCardTile(
                       cardName: entry.card.name,
                       imageUrl: entry.card.imageUrl,
                       quantity: entry.quantity,
@@ -261,52 +278,55 @@ class HomePage extends ConsumerWidget {
 
             const SizedBox(height: AppSpacing.xLarge),
 
-DexSectionTitle(
-  title: 'Lieblingskarten',
-  actionLabel: favoriteEntries.isEmpty ? null : 'Sammlung öffnen',
-  onActionPressed:
-      favoriteEntries.isEmpty ? null : () => onNavigate(1),
-),
+            DexSectionTitle(
+              title: 'Lieblingskarten',
+              actionLabel: favoriteEntries.isEmpty ? null : 'Alle anzeigen',
+              onActionPressed:
+                  favoriteEntries.isEmpty ? null : () => onNavigate(1),
+            ),
 
-const SizedBox(height: AppSpacing.small),
+            const SizedBox(height: AppSpacing.small),
 
-if (favoriteEntries.isEmpty)
-  DexEmptyState(
-    icon: Icons.star_border,
-    title: 'Noch keine Lieblingskarten',
-    description:
-        'Markiere Karten auf der Detailseite mit dem Stern.',
-    onTap: () => onNavigate(1),
-  )
-else
-  SizedBox(
-    height: 190,
-    child: ListView.separated(
-      scrollDirection: Axis.horizontal,
-      itemCount: favoriteEntries.length,
-      separatorBuilder: (_, _) =>
-          const SizedBox(width: AppSpacing.medium),
-      itemBuilder: (context, index) {
-        final entry = favoriteEntries[index];
+            if (favoriteEntries.isEmpty)
+              DexEmptyState(
+                icon: Icons.star_border,
+                title: 'Noch keine Lieblingskarten',
+                description:
+                    'Markiere Karten auf der Detailseite mit dem Stern.',
+                onTap: () => onNavigate(1),
+              )
+            else
+              SizedBox(
+                height: 190,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: favoriteEntries.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(width: AppSpacing.medium),
+                  itemBuilder: (context, index) {
+                    final entry = favoriteEntries[index];
 
-        return _FavoriteCardTile(
-          cardName: entry.card.name,
-          imageUrl: entry.card.imageUrl,
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => CardDetailPage(
-                  card: entry.card,
+                    return _DashboardCardTile(
+                      cardName: entry.card.name,
+                      imageUrl: entry.card.imageUrl,
+                      showFavoriteStar: true,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => CardDetailPage(
+                              card: entry.card,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
-            );
-          },
-        );
-      },
-    ),
-  ),
 
-            DexSectionTitle(
+            const SizedBox(height: AppSpacing.xLarge),
+
+            const DexSectionTitle(
               title: 'Schnellzugriff',
             ),
 
@@ -383,17 +403,19 @@ else
   }
 }
 
-class _RecentCardTile extends StatelessWidget {
-  const _RecentCardTile({
+class _DashboardCardTile extends StatelessWidget {
+  const _DashboardCardTile({
     required this.cardName,
     required this.imageUrl,
-    required this.quantity,
     required this.onTap,
+    this.quantity = 1,
+    this.showFavoriteStar = false,
   });
 
   final String cardName;
   final String imageUrl;
   final int quantity;
+  final bool showFavoriteStar;
   final VoidCallback onTap;
 
   @override
@@ -407,22 +429,16 @@ class _RecentCardTile extends StatelessWidget {
           children: [
             Expanded(
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: imageUrl.isEmpty
-                        ? _ImagePlaceholder(cardName: cardName)
-                        : Image.network(
-                            imageUrl,
-                            width: 112,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) {
-                              return _ImagePlaceholder(
-                                cardName: cardName,
-                              );
-                            },
-                          ),
+                  DexNetworkImage(
+                    imageUrl: imageUrl,
+                    width: 112,
+                    fit: BoxFit.cover,
+                    borderRadius: 12,
+                    placeholder: _ImagePlaceholder(
+                      cardName: cardName,
+                    ),
                   ),
                   if (quantity > 1)
                     Positioned(
@@ -444,6 +460,24 @@ class _RecentCardTile extends StatelessWidget {
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
+                        ),
+                      ),
+                    ),
+                  if (showFavoriteStar)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.72),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.star,
+                          color: Colors.amber,
+                          size: 18,
                         ),
                       ),
                     ),
@@ -493,79 +527,7 @@ class _ImagePlaceholder extends StatelessWidget {
     );
   }
 }
-class _FavoriteCardTile extends StatelessWidget {
-  const _FavoriteCardTile({
-    required this.cardName,
-    required this.imageUrl,
-    required this.onTap,
-  });
 
-  final String cardName;
-  final String imageUrl;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 112,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: imageUrl.isEmpty
-                        ? _ImagePlaceholder(cardName: cardName)
-                        : Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) {
-                              return _ImagePlaceholder(
-                                cardName: cardName,
-                              );
-                            },
-                          ),
-                  ),
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.72),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.star,
-                        color: Colors.amber,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.small),
-            Text(
-              cardName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 class _QuickLink extends StatelessWidget {
   const _QuickLink({
     required this.icon,

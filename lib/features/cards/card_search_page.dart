@@ -10,7 +10,12 @@ import 'card_detail_page.dart';
 import '../../shared/widgets/dex_network_image.dart';
 
 class CardSearchPage extends ConsumerStatefulWidget {
-  const CardSearchPage({super.key});
+  const CardSearchPage({
+    this.countForBooster = false,
+    super.key,
+  });
+
+  final bool countForBooster;
 
   @override
   ConsumerState<CardSearchPage> createState() => _CardSearchPageState();
@@ -72,13 +77,16 @@ class _CardSearchPageState extends ConsumerState<CardSearchPage> {
     );
   }
 
+@override
+Widget build(BuildContext context) {
+  final searchResult = ref.watch(cardSearchProvider(_query));
 
-
-  @override
-  Widget build(BuildContext context) {
-    final searchResult = ref.watch(cardSearchProvider(_query));
-
-    return SafeArea(
+  return Scaffold(
+    resizeToAvoidBottomInset: true,
+    appBar: AppBar(
+      title: const Text('Karte hinzufügen'),
+    ),
+    body: SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -112,15 +120,10 @@ class _CardSearchPageState extends ConsumerState<CardSearchPage> {
                     suffixIcon: _controller.text.isEmpty
                         ? null
                         : IconButton(
+                            tooltip: 'Suche löschen',
                             onPressed: _clearSearch,
                             icon: const Icon(Icons.close),
                           ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
-                    ),
                   ),
                 ),
               ],
@@ -131,9 +134,11 @@ class _CardSearchPageState extends ConsumerState<CardSearchPage> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
+  
   Widget _buildResult(AsyncValue<List<PokemonCard>> result) {
     if (_query.length < 2) {
       return const _SearchHint();
@@ -165,14 +170,23 @@ class _CardSearchPageState extends ConsumerState<CardSearchPage> {
 
             return _CardResultTile(
               card: card,
-              onTap: () {
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (context) => CardDetailPage(
+              onTap: () async {
+  final wasAdded = await Navigator.of(context).push<bool>(
+    MaterialPageRoute<bool>(
+      builder: (_) => CardDetailPage(
         card: card,
+        returnToScannerAfterAdd: widget.countForBooster,
       ),
     ),
   );
+
+  if (!mounted) {
+    return;
+  }
+
+  if (wasAdded == true && widget.countForBooster) {
+    Navigator.of(context).pop(true);
+  }
 },
             );
           },
