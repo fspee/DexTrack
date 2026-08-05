@@ -31,6 +31,10 @@ class HomePage extends ConsumerWidget {
         .length;
 
     final recentEntries = collection.reversed.take(5).toList();
+    final favoriteEntries = collection
+    .where((entry) => entry.isFavorite)
+    .take(5)
+    .toList();
     final nextMilestone = _nextMilestone(uniqueCards);
     final cardsUntilMilestone = nextMilestone - uniqueCards;
     final milestoneProgress = uniqueCards / nextMilestone;
@@ -257,6 +261,51 @@ class HomePage extends ConsumerWidget {
 
             const SizedBox(height: AppSpacing.xLarge),
 
+DexSectionTitle(
+  title: 'Lieblingskarten',
+  actionLabel: favoriteEntries.isEmpty ? null : 'Sammlung öffnen',
+  onActionPressed:
+      favoriteEntries.isEmpty ? null : () => onNavigate(1),
+),
+
+const SizedBox(height: AppSpacing.small),
+
+if (favoriteEntries.isEmpty)
+  DexEmptyState(
+    icon: Icons.star_border,
+    title: 'Noch keine Lieblingskarten',
+    description:
+        'Markiere Karten auf der Detailseite mit dem Stern.',
+    onTap: () => onNavigate(1),
+  )
+else
+  SizedBox(
+    height: 190,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: favoriteEntries.length,
+      separatorBuilder: (_, _) =>
+          const SizedBox(width: AppSpacing.medium),
+      itemBuilder: (context, index) {
+        final entry = favoriteEntries[index];
+
+        return _FavoriteCardTile(
+          cardName: entry.card.name,
+          imageUrl: entry.card.imageUrl,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => CardDetailPage(
+                  card: entry.card,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ),
+  ),
+
             DexSectionTitle(
               title: 'Schnellzugriff',
             ),
@@ -444,7 +493,79 @@ class _ImagePlaceholder extends StatelessWidget {
     );
   }
 }
+class _FavoriteCardTile extends StatelessWidget {
+  const _FavoriteCardTile({
+    required this.cardName,
+    required this.imageUrl,
+    required this.onTap,
+  });
 
+  final String cardName;
+  final String imageUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 112,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imageUrl.isEmpty
+                        ? _ImagePlaceholder(cardName: cardName)
+                        : Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) {
+                              return _ImagePlaceholder(
+                                cardName: cardName,
+                              );
+                            },
+                          ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.72),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.star,
+                        color: Colors.amber,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.small),
+            Text(
+              cardName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 class _QuickLink extends StatelessWidget {
   const _QuickLink({
     required this.icon,
