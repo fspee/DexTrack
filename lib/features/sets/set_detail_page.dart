@@ -6,6 +6,7 @@ import '../../core/models/pokemon_set.dart';
 import '../cards/card_detail_page.dart';
 import '../collection/collection_provider.dart';
 import 'set_provider.dart';
+import '../../shared/widgets/dex_network_image.dart';
 
 enum SetCardFilter {
   all,
@@ -27,7 +28,16 @@ class SetDetailPage extends ConsumerStatefulWidget {
 }
 
 class _SetDetailPageState extends ConsumerState<SetDetailPage> {
+  final TextEditingController _searchController = TextEditingController();
+
   SetCardFilter _selectedFilter = SetCardFilter.all;
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,16 +71,35 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
           final progress =
               cards.isEmpty ? 0.0 : ownedCount / cards.length;
 
-          final filteredCards = cards.where((card) {
-            final quantity = quantities[card.id] ?? 0;
+          final query = _searchQuery.trim().toLowerCase();
 
-            return switch (_selectedFilter) {
-              SetCardFilter.all => true,
-              SetCardFilter.owned => quantity > 0,
-              SetCardFilter.missing => quantity == 0,
-              SetCardFilter.duplicates => quantity > 1,
-            };
-          }).toList();
+final filteredCards = cards.where((card) {
+  final quantity = quantities[card.id] ?? 0;
+
+  final matchesFilter = switch (_selectedFilter) {
+    SetCardFilter.all => true,
+    SetCardFilter.owned => quantity > 0,
+    SetCardFilter.missing => quantity == 0,
+    SetCardFilter.duplicates => quantity > 1,
+  };
+
+  final matchesSearch = query.isEmpty ||
+      card.name.toLowerCase().contains(query) ||
+      card.number.toLowerCase().contains(query);
+
+  return matchesFilter && matchesSearch;
+}).toList();
+          final pages = <List<PokemonCard>>[];
+
+for (var index = 0; index < filteredCards.length; index += 9) {
+  final end = (index + 9 < filteredCards.length)
+      ? index + 9
+      : filteredCards.length;
+
+  pages.add(
+    filteredCards.sublist(index, end),
+  );
+}
 
           return CustomScrollView(
             slivers: [
@@ -83,6 +112,36 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
                 ),
               ),
               SliverToBoxAdapter(
+  child: Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    child: TextField(
+      controller: _searchController,
+      onChanged: (value) {
+        setState(() {
+          _searchQuery = value;
+        });
+      },
+      decoration: InputDecoration(
+        hintText: 'Karten in diesem Set suchen',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: _searchController.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Suche löschen',
+                onPressed: () {
+                  _searchController.clear();
+
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+                icon: const Icon(Icons.close),
+              ),
+      ),
+    ),
+  ),
+),
+              SliverToBoxAdapter(
                 child: _FilterBar(
                   selectedFilter: _selectedFilter,
                   onSelected: (filter) {
@@ -92,36 +151,70 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
                   },
                 ),
               ),
+
+SliverToBoxAdapter(
+  child: Padding(
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+    child: Row(
+      children: [
+        Text(
+          query.isEmpty
+              ? '${filteredCards.length} Karten'
+              : '${filteredCards.length} Treffer',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const Spacer(),
+        if (pages.isNotEmpty)
+          Text(
+            '${pages.length} ${pages.length == 1 ? "Seite" : "Seiten"}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+      ],
+    ),
+  ),
+),
+
+              SliverToBoxAdapter(
+  child: Padding(
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+    child: Text(
+      query.isEmpty
+          ? '${filteredCards.length} Karten'
+          : '${filteredCards.length} Treffer',
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+    ),
+  ),
+),
               if (filteredCards.isEmpty)
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: _EmptyFilterResult(),
                 )
               else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                  sliver: SliverGrid(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final card = filteredCards[index];
-                        final quantity = quantities[card.id] ?? 0;
+  SliverToBoxAdapter(
+    child: SizedBox(
+      height: 560,
+      child: PageView.builder(
+        itemCount: pages.length,
+        itemBuilder: (context, pageIndex) {
+          final pageCards = pages[pageIndex];
 
-                        return _BinderCard(
-                          card: card,
-                          quantity: quantity,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (context) => CardDetailPage(
-                                  card: card,
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      childCount: filteredCards.length,
-                    ),
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              children: [
+                Expanded(
+                  child: GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: pageCards.length,
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
@@ -129,8 +222,42 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
                       mainAxisSpacing: 14,
                       childAspectRatio: 0.68,
                     ),
+                    itemBuilder: (context, index) {
+                      final card = pageCards[index];
+                      final quantity = quantities[card.id] ?? 0;
+
+                      return _BinderCard(
+                        card: card,
+                        quantity: quantity,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (context) => CardDetailPage(
+                                card: card,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
+                const SizedBox(height: 12),
+                Text(
+                  'Seite ${pageIndex + 1} von ${pages.length}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ),
+  ),
             ],
           );
         },
@@ -401,13 +528,14 @@ class _BinderCard extends StatelessWidget {
   Widget _buildCardImage(BuildContext context) {
     final image = card.imageUrl.isEmpty
         ? _CardPlaceholder(cardName: card.name)
-        : Image.network(
-            card.imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) {
-              return _CardPlaceholder(cardName: card.name);
-            },
-          );
+        : DexNetworkImage(
+  imageUrl: card.imageUrl,
+  fit: BoxFit.cover,
+  borderRadius: 0,
+  placeholder: _CardPlaceholder(
+    cardName: card.name,
+  ),
+);
 
     if (isOwned) {
       return image;

@@ -60,6 +60,8 @@ class CollectionItems extends Table {
       text().withDefault(const Constant('unbekannt'))();
 
   DateTimeColumn get addedAt => dateTime()();
+  BoolColumn get isFavorite =>
+    boolean().withDefault(const Constant(false))();
 
   @override
   List<Set<Column<Object>>> get uniqueKeys => [
@@ -86,7 +88,24 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'dextrack'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+MigrationStrategy get migration {
+  return MigrationStrategy(
+    onCreate: (migrator) async {
+      await migrator.createAll();
+    },
+    onUpgrade: (migrator, from, to) async {
+     if (from < 2) {
+  await customStatement(
+    'ALTER TABLE collection_items '
+    'ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+  );
+} 
+    },
+  );
+}
 
   Future<bool> isOnboardingComplete() async {
     final row = await (select(appSettings)
@@ -139,16 +158,18 @@ class AppDatabase extends _$AppDatabase {
       );
 
       return CollectionEntry(
-        card: card,
-        quantity: collectionItem.quantity,
-      );
+  card: card,
+  quantity: collectionItem.quantity,
+  isFavorite: collectionItem.isFavorite,
+);
     }).toList();
   }
 
   Future<void> saveCollectionEntry({
-    required PokemonCard card,
-    required int quantity,
-  }) async {
+  required PokemonCard card,
+  required int quantity,
+  required bool isFavorite,
+}) async {
     await transaction(() async {
       await into(storedCards).insertOnConflictUpdate(
         StoredCardsCompanion.insert(
@@ -186,6 +207,7 @@ class AppDatabase extends _$AppDatabase {
             variant: const Value('normal'),
             condition: const Value('unbekannt'),
             addedAt: DateTime.now(),
+            isFavorite: Value(isFavorite),
           ),
         );
       } else {
@@ -195,12 +217,86 @@ class AppDatabase extends _$AppDatabase {
               ))
             .write(
           CollectionItemsCompanion(
-            quantity: Value(quantity),
-          ),
+  quantity: Value(quantity),
+  isFavorite: Value(isFavorite),
+),
         );
       }
     });
   }
+
+Future<void> saveCardsToCache(List<PokemonCard> cards) async {
+  if (cards.isEmpty) {
+    return;
+  }
+
+  await batch((batch) {
+    for (final card in cards) {
+      batch.insert(
+        storedCards,
+        StoredCardsCompanion.insert(
+          cardId: card.id,
+          name: card.name,
+          setId: card.setId,
+          setName: card.setName,
+          number: card.number,
+          rarity: Value(card.rarity),
+          imageUrl: Value(card.imageUrl),
+          cardmarketUrl: Value(card.cardmarketUrl),
+          language: Value(card.language),
+          supertype: Value(card.supertype),
+          subtypesJson: Value(jsonEncode(card.subtypes)),
+          hp: Value(card.hp),
+          typesJson: Value(jsonEncode(card.types)),
+          updatedAt: DateTime.now(),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    }
+  });
+}
+
+Future<List<PokemonCard>> loadCachedCardsForSet(String setId) async {
+  final rows = await (select(storedCards)
+        ..where((table) => table.setId.equals(setId)))
+      .get();
+
+  return rows.map((storedCard) {
+    return PokemonCard(
+      id: storedCard.cardId,
+      name: storedCard.name,
+      setId: storedCard.setId,
+      setName: storedCard.setName,
+      number: storedCard.number,
+      rarity: storedCard.rarity,
+      imageUrl: storedCard.imageUrl,
+      cardmarketUrl: storedCard.cardmarketUrl,
+      language: storedCard.language,
+      supertype: storedCard.supertype,
+      subtypes: _decodeStringList(storedCard.subtypesJson),
+      hp: storedCard.hp,
+      types: _decodeStringList(storedCard.typesJson),
+    );
+  }).toList();
+}
+Future<bool> isSetCacheComplete(String setId) async {
+  final row = await (select(appSettings)
+        ..where(
+          (table) => table.settingKey.equals('set_cache_$setId'),
+        ))
+      .getSingleOrNull();
+
+  return row?.settingValue == 'complete';
+}
+
+Future<void> markSetCacheComplete(String setId) async {
+  await into(appSettings).insertOnConflictUpdate(
+    AppSettingsCompanion.insert(
+      settingKey: 'set_cache_$setId',
+      settingValue: 'complete',
+    ),
+  );
+}
 
   Future<void> deleteCollectionEntry(String cardId) async {
     await (delete(collectionItems)

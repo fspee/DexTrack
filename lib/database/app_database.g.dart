@@ -866,6 +866,21 @@ class $CollectionItemsTable extends CollectionItems
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -874,6 +889,7 @@ class $CollectionItemsTable extends CollectionItems
     variant,
     condition,
     addedAt,
+    isFavorite,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -924,6 +940,12 @@ class $CollectionItemsTable extends CollectionItems
     } else if (isInserting) {
       context.missing(_addedAtMeta);
     }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
     return context;
   }
 
@@ -961,6 +983,10 @@ class $CollectionItemsTable extends CollectionItems
         DriftSqlType.dateTime,
         data['${effectivePrefix}added_at'],
       )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
     );
   }
 
@@ -977,6 +1003,7 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
   final String variant;
   final String condition;
   final DateTime addedAt;
+  final bool isFavorite;
   const CollectionItem({
     required this.id,
     required this.cardId,
@@ -984,6 +1011,7 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
     required this.variant,
     required this.condition,
     required this.addedAt,
+    required this.isFavorite,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -994,6 +1022,7 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
     map['variant'] = Variable<String>(variant);
     map['condition'] = Variable<String>(condition);
     map['added_at'] = Variable<DateTime>(addedAt);
+    map['is_favorite'] = Variable<bool>(isFavorite);
     return map;
   }
 
@@ -1005,6 +1034,7 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
       variant: Value(variant),
       condition: Value(condition),
       addedAt: Value(addedAt),
+      isFavorite: Value(isFavorite),
     );
   }
 
@@ -1020,6 +1050,7 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
       variant: serializer.fromJson<String>(json['variant']),
       condition: serializer.fromJson<String>(json['condition']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
     );
   }
   @override
@@ -1032,6 +1063,7 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
       'variant': serializer.toJson<String>(variant),
       'condition': serializer.toJson<String>(condition),
       'addedAt': serializer.toJson<DateTime>(addedAt),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
     };
   }
 
@@ -1042,6 +1074,7 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
     String? variant,
     String? condition,
     DateTime? addedAt,
+    bool? isFavorite,
   }) => CollectionItem(
     id: id ?? this.id,
     cardId: cardId ?? this.cardId,
@@ -1049,6 +1082,7 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
     variant: variant ?? this.variant,
     condition: condition ?? this.condition,
     addedAt: addedAt ?? this.addedAt,
+    isFavorite: isFavorite ?? this.isFavorite,
   );
   CollectionItem copyWithCompanion(CollectionItemsCompanion data) {
     return CollectionItem(
@@ -1058,6 +1092,9 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
       variant: data.variant.present ? data.variant.value : this.variant,
       condition: data.condition.present ? data.condition.value : this.condition,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
     );
   }
 
@@ -1069,14 +1106,22 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
           ..write('quantity: $quantity, ')
           ..write('variant: $variant, ')
           ..write('condition: $condition, ')
-          ..write('addedAt: $addedAt')
+          ..write('addedAt: $addedAt, ')
+          ..write('isFavorite: $isFavorite')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, cardId, quantity, variant, condition, addedAt);
+  int get hashCode => Object.hash(
+    id,
+    cardId,
+    quantity,
+    variant,
+    condition,
+    addedAt,
+    isFavorite,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1086,7 +1131,8 @@ class CollectionItem extends DataClass implements Insertable<CollectionItem> {
           other.quantity == this.quantity &&
           other.variant == this.variant &&
           other.condition == this.condition &&
-          other.addedAt == this.addedAt);
+          other.addedAt == this.addedAt &&
+          other.isFavorite == this.isFavorite);
 }
 
 class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
@@ -1096,6 +1142,7 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
   final Value<String> variant;
   final Value<String> condition;
   final Value<DateTime> addedAt;
+  final Value<bool> isFavorite;
   const CollectionItemsCompanion({
     this.id = const Value.absent(),
     this.cardId = const Value.absent(),
@@ -1103,6 +1150,7 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
     this.variant = const Value.absent(),
     this.condition = const Value.absent(),
     this.addedAt = const Value.absent(),
+    this.isFavorite = const Value.absent(),
   });
   CollectionItemsCompanion.insert({
     this.id = const Value.absent(),
@@ -1111,6 +1159,7 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
     this.variant = const Value.absent(),
     this.condition = const Value.absent(),
     required DateTime addedAt,
+    this.isFavorite = const Value.absent(),
   }) : cardId = Value(cardId),
        addedAt = Value(addedAt);
   static Insertable<CollectionItem> custom({
@@ -1120,6 +1169,7 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
     Expression<String>? variant,
     Expression<String>? condition,
     Expression<DateTime>? addedAt,
+    Expression<bool>? isFavorite,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1128,6 +1178,7 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
       if (variant != null) 'variant': variant,
       if (condition != null) 'condition': condition,
       if (addedAt != null) 'added_at': addedAt,
+      if (isFavorite != null) 'is_favorite': isFavorite,
     });
   }
 
@@ -1138,6 +1189,7 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
     Value<String>? variant,
     Value<String>? condition,
     Value<DateTime>? addedAt,
+    Value<bool>? isFavorite,
   }) {
     return CollectionItemsCompanion(
       id: id ?? this.id,
@@ -1146,6 +1198,7 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
       variant: variant ?? this.variant,
       condition: condition ?? this.condition,
       addedAt: addedAt ?? this.addedAt,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -1170,6 +1223,9 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
     if (addedAt.present) {
       map['added_at'] = Variable<DateTime>(addedAt.value);
     }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
     return map;
   }
 
@@ -1181,7 +1237,8 @@ class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
           ..write('quantity: $quantity, ')
           ..write('variant: $variant, ')
           ..write('condition: $condition, ')
-          ..write('addedAt: $addedAt')
+          ..write('addedAt: $addedAt, ')
+          ..write('isFavorite: $isFavorite')
           ..write(')'))
         .toString();
   }
@@ -1918,6 +1975,7 @@ typedef $$CollectionItemsTableCreateCompanionBuilder =
       Value<String> variant,
       Value<String> condition,
       required DateTime addedAt,
+      Value<bool> isFavorite,
     });
 typedef $$CollectionItemsTableUpdateCompanionBuilder =
     CollectionItemsCompanion Function({
@@ -1927,6 +1985,7 @@ typedef $$CollectionItemsTableUpdateCompanionBuilder =
       Value<String> variant,
       Value<String> condition,
       Value<DateTime> addedAt,
+      Value<bool> isFavorite,
     });
 
 final class $$CollectionItemsTableReferences
@@ -1990,6 +2049,11 @@ class $$CollectionItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$StoredCardsTableFilterComposer get cardId {
     final $$StoredCardsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -2048,6 +2112,11 @@ class $$CollectionItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$StoredCardsTableOrderingComposer get cardId {
     final $$StoredCardsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2095,6 +2164,11 @@ class $$CollectionItemsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get addedAt =>
       $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
 
   $$StoredCardsTableAnnotationComposer get cardId {
     final $$StoredCardsTableAnnotationComposer composer = $composerBuilder(
@@ -2156,6 +2230,7 @@ class $$CollectionItemsTableTableManager
                 Value<String> variant = const Value.absent(),
                 Value<String> condition = const Value.absent(),
                 Value<DateTime> addedAt = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
               }) => CollectionItemsCompanion(
                 id: id,
                 cardId: cardId,
@@ -2163,6 +2238,7 @@ class $$CollectionItemsTableTableManager
                 variant: variant,
                 condition: condition,
                 addedAt: addedAt,
+                isFavorite: isFavorite,
               ),
           createCompanionCallback:
               ({
@@ -2172,6 +2248,7 @@ class $$CollectionItemsTableTableManager
                 Value<String> variant = const Value.absent(),
                 Value<String> condition = const Value.absent(),
                 required DateTime addedAt,
+                Value<bool> isFavorite = const Value.absent(),
               }) => CollectionItemsCompanion.insert(
                 id: id,
                 cardId: cardId,
@@ -2179,6 +2256,7 @@ class $$CollectionItemsTableTableManager
                 variant: variant,
                 condition: condition,
                 addedAt: addedAt,
+                isFavorite: isFavorite,
               ),
           withReferenceMapper: (p0) => p0
               .map(

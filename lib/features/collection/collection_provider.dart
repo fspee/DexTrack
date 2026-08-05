@@ -122,6 +122,42 @@ class CollectionNotifier extends Notifier<List<CollectionEntry>> {
     _deleteEntry(card.id);
   }
 
+void toggleFavorite(PokemonCard card) {
+  final existingIndex = state.indexWhere(
+    (entry) => entry.card.id == card.id,
+  );
+
+  if (existingIndex == -1) {
+    final newEntry = CollectionEntry(
+      card: card,
+      quantity: 1,
+      isFavorite: true,
+    );
+
+    state = [
+      ...state,
+      newEntry,
+    ];
+
+    _saveEntry(newEntry);
+    return;
+  }
+
+  final updatedEntry = state[existingIndex].copyWith(
+    isFavorite: !state[existingIndex].isFavorite,
+  );
+
+  state = [
+    for (var index = 0; index < state.length; index++)
+      if (index == existingIndex)
+        updatedEntry
+      else
+        state[index],
+  ];
+
+  _saveEntry(updatedEntry);
+}
+
   void clearCollection() {
     state = [];
 
@@ -142,6 +178,7 @@ class CollectionNotifier extends Notifier<List<CollectionEntry>> {
       database.saveCollectionEntry(
         card: entry.card,
         quantity: entry.quantity,
+        isFavorite: entry.isFavorite,
       ),
     );
   }

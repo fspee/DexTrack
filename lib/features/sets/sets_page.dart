@@ -6,11 +6,26 @@ import '../collection/collection_provider.dart';
 import 'set_detail_page.dart';
 import 'set_provider.dart';
 
-class SetsPage extends ConsumerWidget {
+class SetsPage extends ConsumerStatefulWidget {
   const SetsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SetsPage> createState() => _SetsPageState();
+}
+
+class _SetsPageState extends ConsumerState<SetsPage> {
+  final TextEditingController _searchController = TextEditingController();
+
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final setsResult = ref.watch(setsProvider);
     final collection = ref.watch(collectionProvider);
 
@@ -37,6 +52,32 @@ class SetsPage extends ConsumerWidget {
                     fontSize: 16,
                   ),
                 ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Sets durchsuchen',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Suche löschen',
+                            onPressed: () {
+                              _searchController.clear();
+
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -60,14 +101,30 @@ class SetsPage extends ConsumerWidget {
                   );
                 }
 
+                final query = _searchQuery.trim().toLowerCase();
+
+                final visibleSets = sets.where((set) {
+                  if (query.isEmpty) {
+                    return true;
+                  }
+
+                  return set.name.toLowerCase().contains(query) ||
+                      set.id.toLowerCase().contains(query);
+                }).toList();
+
+                if (visibleSets.isEmpty) {
+                  return const Center(
+                    child: Text('Kein passendes Set gefunden.'),
+                  );
+                }
+
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  itemCount: sets.length,
+                  itemCount: visibleSets.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final set = sets[index];
+                    final set = visibleSets[index];
 
-                    // Unterschiedliche Karten dieses Sets in der Sammlung.
                     final ownedCardIds = collection
                         .where((entry) => entry.card.setId == set.id)
                         .map((entry) => entry.card.id)
@@ -75,7 +132,6 @@ class SetsPage extends ConsumerWidget {
 
                     final ownedCount = ownedCardIds.length;
 
-                    // Wir verwenden dieselbe Gesamtzahl wie in der Detailseite.
                     final totalCount = set.totalCardCount > 0
                         ? set.totalCardCount
                         : set.officialCardCount;

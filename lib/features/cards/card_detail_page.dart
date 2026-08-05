@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/pokemon_card.dart';
 import '../collection/collection_provider.dart';
+import '../../shared/widgets/dex_network_image.dart';
 
 class CardDetailPage extends ConsumerWidget {
   const CardDetailPage({
@@ -14,10 +15,34 @@ class CardDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final collection = ref.watch(collectionProvider);
+
+final isFavorite = collection.any(
+  (entry) => entry.card.id == card.id && entry.isFavorite,
+);
     return Scaffold(
       appBar: AppBar(
-        title: Text(card.name),
+  title: Text(card.name),
+  actions: [
+    IconButton(
+      tooltip: isFavorite
+          ? 'Aus Favoriten entfernen'
+          : 'Als Favorit markieren',
+      onPressed: () {
+        ref
+            .read(collectionProvider.notifier)
+            .toggleFavorite(card);
+      },
+      icon: Icon(
+        isFavorite ? Icons.star : Icons.star_border,
+        color: isFavorite
+            ? Colors.amber
+            : null,
       ),
+    ),
+    const SizedBox(width: 8),
+  ],
+),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -27,21 +52,24 @@ class CardDetailPage extends ConsumerWidget {
               Center(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(18),
-                  child: card.imageUrl.isNotEmpty
-                      ? Image.network(
-                          card.imageUrl,
-                          height: 420,
-                          fit: BoxFit.contain,
-                        )
-                      : Container(
-                          height: 420,
-                          width: 300,
-                          color: Colors.grey.shade200,
-                          child: const Icon(
-                            Icons.style,
-                            size: 80,
-                          ),
-                        ),
+                  child: DexNetworkImage(
+  imageUrl: card.imageUrl,
+  width: 300,
+  height: 420,
+  fit: BoxFit.contain,
+  borderRadius: 18,
+  placeholder: Container(
+    width: 300,
+    height: 420,
+    color: Theme.of(context).colorScheme.primaryContainer,
+    alignment: Alignment.center,
+    child: Icon(
+      Icons.style_outlined,
+      size: 80,
+      color: Theme.of(context).colorScheme.primary,
+    ),
+  ),
+)
                 ),
               ),
 

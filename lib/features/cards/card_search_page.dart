@@ -7,6 +7,7 @@ import '../../core/models/pokemon_card.dart';
 import '../collection/collection_provider.dart';
 import 'card_search_provider.dart';
 import 'card_detail_page.dart';
+import '../../shared/widgets/dex_network_image.dart';
 
 class CardSearchPage extends ConsumerStatefulWidget {
   const CardSearchPage({super.key});
@@ -208,26 +209,17 @@ class _CardResultTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(9),
-                child: card.imageUrl.isEmpty
-                    ? const _CardImagePlaceholder(
-                        width: 58,
-                        height: 81,
-                      )
-                    : Image.network(
-                        card.imageUrl,
-                        width: 58,
-                        height: 81,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) {
-                          return const _CardImagePlaceholder(
-                            width: 58,
-                            height: 81,
-                          );
-                        },
-                      ),
-              ),
+              DexNetworkImage(
+  imageUrl: card.imageUrl,
+  width: 58,
+  height: 81,
+  fit: BoxFit.cover,
+  borderRadius: 9,
+  placeholder: const _CardImagePlaceholder(
+    width: 58,
+    height: 81,
+  ),
+),
               const SizedBox(width: 15),
               Expanded(
                 child: Column(
